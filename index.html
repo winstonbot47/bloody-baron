@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>The Bloody Baron</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Spectral:ital,wght@0,400;0,600;1,400&family=Cutive+Mono&display=swap">
+<style>
+/* Layout: one short card per decision, outcome folds in under the pick, ledger at the end. */
+:root{
+  --bg:#ece3cf; --paper:#f5eedd; --fg:#28211a; --muted:#6b5f50; --line:#c9bca0;
+  --accent:#7d2419; --moss:#4a5a38; --choice:#fbf7ec; --choice-h:#f1e8d3;
+  --display:'IM Fell English',Georgia,'Times New Roman',serif;
+  --body:'Spectral',Georgia,serif;
+  --mono:'Cutive Mono','Courier New',monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#14171a; --paper:#1d2125; --fg:#dcd3c0; --muted:#a09482; --line:#3a4046;
+  --accent:#d3573f; --moss:#9db36f; --choice:#23282d; --choice-h:#2c3238; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#14171a; --paper:#1d2125; --fg:#dcd3c0; --muted:#a09482; --line:#3a4046;
+  --accent:#d3573f; --moss:#9db36f; --choice:#23282d; --choice-h:#2c3238; color-scheme:dark }
+
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:18px;line-height:1.55;padding-inline:16px;padding-block:24px 48px}
+*{box-sizing:border-box}
+.wrap{max-width:640px;margin:0 auto;display:grid;gap:20px}
+header{border-bottom:1px solid var(--line);padding-bottom:12px;display:flex;flex-wrap:wrap;gap:6px 16px;align-items:baseline;justify-content:space-between}
+h1{font-family:var(--display);font-weight:400;font-size:2rem;margin:0}
+h1 em{color:var(--accent);font-style:italic}
+.sub{font-family:var(--mono);font-size:.78rem;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.scene{background:var(--paper);border:1px solid var(--line);padding:20px 20px 16px;min-width:0}
+.eyebrow{font-family:var(--mono);font-size:.76rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 4px}
+h2{font-family:var(--display);font-weight:400;font-size:1.6rem;margin:0 0 12px;text-wrap:balance;line-height:1.15}
+.scene p{margin:0 0 .7em}
+.prompt{font-family:var(--mono);color:var(--muted);margin:16px 0 8px;font-size:.95rem}
+.choices{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.choices button{width:100%;text-align:left;background:var(--choice);color:var(--fg);border:1px solid var(--line);padding:12px 14px;font:inherit;font-size:1.05rem;cursor:pointer;display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px}
+.choices button:hover{background:var(--choice-h)}
+.choices button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.key{font-family:var(--mono);color:var(--accent)}
+.result{border-top:1px solid var(--line);margin-top:16px;padding-top:12px}
+.result h3{font-family:var(--mono);font-weight:400;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 4px;color:var(--moss)}
+.result ul{margin:0 0 6px;padding-left:1.2em}
+.result li{margin-bottom:4px}
+.next{margin-top:14px;display:flex;gap:10px;flex-wrap:wrap}
+.btn{background:var(--fg);color:var(--bg);border:0;padding:10px 16px;font:inherit;font-size:.95rem;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.95rem;margin-top:8px}
+th,td{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid var(--line)}
+th{font-family:var(--mono);font-weight:400;font-size:.76rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+td.dead{color:var(--accent)}
+.endnote{font-size:.9rem;color:var(--muted)}
+.howto{font-size:.9rem;color:var(--muted);margin:0}
+@media (prefers-reduced-motion: no-preference){.scene{animation:fade .2s ease-out}}
+@keyframes fade{from{opacity:.4}to{opacity:1}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>The <em>Bloody</em> Baron</h1>
+    <div class="sub">Witcher 3 · eight Velen choices, four that matter</div>
+  </header>
+  <main id="main"></main>
+  <p class="howto">Argue it out before anyone taps. Then take the other fork and compare.</p>
+</div>
+
+<script>
+const S = {};
+const state = { botchling:null, hillock:null, fyke:null, keira:null, scene:'deal', chosen:null };
+
+S.deal = {
+  where: 'Small choice · Crow’s Perch',
+  title: 'The Baron’s price',
+  text: [
+    'You are hunting Ciri. The Bloody Baron, Nilfgaard’s drunk warlord of Velen, admits she stayed under his roof. He will tell you everything, but only after you find his wife Anna and daughter Tamara, who walked out one night without a word.'
+  ],
+  choices: [
+    { k:'1', label:'Take the job.', set:{deal:'took'},
+      out:['He gives you the run of the keep.','Start with their rooms.'] },
+    { k:'2', label:'Threaten him. You are not his errand boy.', set:{deal:'threat'},
+      out:['His men put hands on swords. He does not budge.','You take the job anyway. He is the only one who knows where Ciri went.'] }
+  ],
+  next:'pellar'
+};
+
+S.pellar = {
+  where: 'Small choice · The Pellar’s hut',
+  title: 'The Baron’s thugs',
+  text: [
+    'The hedge-healer called the Pellar can do a ritual to show what happened the night they left, once you fetch his runaway goat. While you are there, three of the Baron’s men turn up to beat the old man for a debt.'
+  ],
+  choices: [
+    { k:'1', label:'Tell them to walk away.', set:{pellar:'talked'},
+      out:['They know what a witcher is. They leave.','The Pellar does the ritual.'] },
+    { k:'2', label:'Draw steel.', set:{pellar:'killed'},
+      out:['Three of the Baron’s men dead in the yard.','The Baron shrugs when he hears. He has more.','The Pellar does the ritual.'] }
+  ],
+  next:'confession'
+};
+
+S.confession = {
+  where: 'Small choice · The keep',
+  title: 'What the ritual showed',
+  text: [
+    'Anna and the Baron fought. He was drunk. She was pregnant. She fell, or was thrown, and lost the child. He buried the stillborn under the walls and told no one.',
+    'Cornered, he tells you the rest himself. He does not deny the fists. He says he loved her anyway.'
+  ],
+  choices: [
+    { k:'1', label:'Let him talk.', set:{confession:'listened'},
+      out:['He gets it all out. By the end he is not defending himself, just describing it.'] },
+    { k:'2', label:'Tell him what you think of a man who beats his wife.', set:{confession:'called'},
+      out:['He takes it. Then he asks if you will still help.','You will. Ciri’s trail runs through him.'] }
+  ],
+  next:'botchling'
+};
+
+S.botchling = {
+  where: 'Decision 1 · Crow’s Perch, under the walls',
+  title: 'The botchling',
+  text: [
+    'A child buried without a name does not stay buried. The stillborn crawls out at night as a botchling, feeding on the household.',
+    'The Baron is standing behind you with a torch.'
+  ],
+  choices: [
+    { k:'1', label:'Kill it.', set:{botchling:'killed'},
+      out:['Quick, ugly fight. It dies.','The Baron watches and says nothing.','You still find Anna’s trail, just the slow way.'] },
+    { k:'2', label:'Make the Baron carry it home, bury it under the doorstep, and name it.', set:{botchling:'named'},
+      out:['It bites him to the bone the whole way. He does it anyway. He names her Dea.','It becomes a lubberkin, a household spirit, and leads you straight to Anna’s trail.','This is the only moment in the story where he gets to hold his child.'] }
+  ],
+  next:'hillock'
+};
+
+S.hillock = {
+  where: 'Decision 2 · The Whispering Hillock, above Downwarren',
+  title: 'The thing in the tree',
+  text: [
+    'The trail leads to Crookback Bog: a hut full of orphans, a silent old woman they call Gran, and the three Crones who rule the swamp. The Crones know where Ciri went. Their price: kill the spirit trapped in a tree on the Whispering Hillock that torments the village of Downwarren.',
+    'The spirit says the Crones eat the children, and that if you free it, it will save them. It also clearly hates Downwarren. Its heart is right there in the roots.'
+  ],
+  choices: [
+    { k:'1', label:'Free the spirit.', set:{hillock:'freed'},
+      out:['It escapes and carries the orphans out of the bog. They live.','On its way out it slaughters Downwarren. The ealdorman is dead.','The Crones blame Gran for losing the children.'] },
+    { k:'2', label:'Burn its heart.', set:{hillock:'killed'},
+      out:['Downwarren is safe. The ealdorman gives you his ear for the Crones.','The orphans stay in the bog. The Crones eat them.','Gran is made to watch.'] }
+  ],
+  next:'tamara'
+};
+
+S.tamara = {
+  where: 'Small choice · Oxenfurt',
+  title: 'The daughter',
+  text: [
+    'Tamara is alive in the city, taken in by witch hunters. She left so her mother could leave. She is not going back. When you tell her Anna is in the bog, she decides to go get her, hunters and all.',
+    'She asks what her father is like now.'
+  ],
+  choices: [
+    { k:'1', label:'He is sorry, and he is still the same man.', set:{tamara:'honest'},
+      out:['"Sorry does not undo anything."','She rides for the bog.'] },
+    { k:'2', label:'Tell her he carried their dead child home with his own hands.', set:{tamara:'soft'},
+      out:['"He should have carried her alive."','She rides for the bog.'] }
+  ],
+  next:'bog'
+};
+
+S.bog = {
+  where: 'The payoff · Return to Crookback Bog',
+  title: 'Gran was Anna',
+  dyn: (s) => s.hillock === 'freed' ? [
+    'The Baron, Tamara, and the witch hunters ride into the bog with you. The hut is empty.',
+    'In the water are three water hags. One wears Anna’s ring. The Crones cursed her for losing the children. The Baron begs you to lift it. You do. She is herself for a few breaths, then dies in his lap.',
+    'When you get back to Crow’s Perch, the Baron has hanged himself in the yard.'
+  ] : [
+    'The Baron, Tamara, and the witch hunters ride into the bog with you. The children’s beds are empty.',
+    'Anna is alive in the corner. Her hair is white and her mind is gone. She does not know him.',
+    'The Baron gives the keep to his sergeant and takes her east to the Blue Mountains to find a healer. You never see them again. Tamara does not go with them and does not forgive him.'
+  ],
+  choices: [ { k:'1', label:'On to the next one.', out:[] } ],
+  next:'fyke'
+};
+
+S.fyke = {
+  where: 'Decision 3 · Fyke Isle, the same swamp',
+  title: 'The tower on the lake',
+  text: [
+    'Keira Metz, a sorceress hiding in Velen, sends you to a ruined tower on an island. A lord’s daughter, Anabelle, was locked in it during a peasant revolt and died there. Her ghost has become a pesta, a plague wraith, and nothing that lands on the island lives.',
+    'She tells you her story. She only wants her bones carried to Graham, the fisherman who loved her and never came back for her.'
+  ],
+  choices: [
+    { k:'1', label:'Carry her bones to Graham.', set:{fyke:'bones'},
+      out:['Graham takes them. Anabelle appears, kisses him, and he dies on the spot.','She was never going to rest. She is a plague maiden now, loose on the mainland.','Oreton, the village across the water, starts dying.'] },
+    { k:'2', label:'Refuse. Fight her.', set:{fyke:'fought'},
+      out:['Hard fight. The pesta dies in the tower.','Graham lives. He never learns what she wanted.','No plague. Oreton goes on.'] }
+  ],
+  next:'keira'
+};
+
+S.keira = {
+  where: 'Decision 4 · Keira’s hut',
+  title: 'What to do with Keira',
+  text: [
+    'Keira used you. The tower job was cover for stealing a dead mage’s plague research. She plans to take it to King Radovid, the witch-burner, and buy her way back to court with it.',
+    'You catch her packing.'
+  ],
+  choices: [
+    { k:'1', label:'Let her go to Radovid.', set:{keira:'radovid'},
+      out:['She rides north with the notes.','Later you find her in Novigrad, burned at the stake. Radovid took the research and killed her anyway.'] },
+    { k:'2', label:'Kill her.', set:{keira:'dead'},
+      out:['Short duel. She loses.','The research dies with her. Nobody else is hurt.'] },
+    { k:'3', label:'Send her to Kaer Morhen.', set:{keira:'kaer'},
+      out:['She goes. She hates it.','At the battle of Kaer Morhen she fights beside you and saves Lambert’s life.','She and Lambert leave together afterward. One of the few happy endings in the game.'] }
+  ],
+  next:'end'
+};
+
+S.end = { final:true, where:'Afterward', title:'What it bought' };
+
+function esc(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+
+function render(){
+  const sc = S[state.scene];
+  let h = `<section class="scene"><p class="eyebrow">${esc(sc.where)}</p><h2>${esc(sc.title)}</h2>`;
+  if (sc.final) h += endHTML();
+  else {
+    (sc.dyn ? sc.dyn(state) : sc.text).forEach(p => h += `<p>${esc(p)}</p>`);
+    if (state.chosen === null) {
+      h += `<p class="prompt">&gt; ${sc.choices.length > 1 ? 'What do you do?' : ''}</p><ul class="choices">`;
+      sc.choices.forEach((c,i) => h += `<li><button data-i="${i}"><span class="key">[${c.k}]</span><span>${esc(c.label)}</span></button></li>`);
+      h += `</ul>`;
+    } else {
+      const c = sc.choices[state.chosen];
+      h += `<p class="prompt">&gt; ${esc(c.label)}</p><div class="result"><h3>What happens</h3><ul>`;
+      c.out.forEach(o => h += `<li>${esc(o)}</li>`);
+      h += `</ul></div><div class="next"><button class="btn" id="go">Next</button></div>`;
+    }
+  }
+  h += `</section>`;
+  const main = document.getElementById('main'); main.innerHTML = h;
+  main.querySelectorAll('button[data-i]').forEach(b => b.addEventListener('click', () => choose(+b.dataset.i)));
+  const go = document.getElementById('go'); if (go) go.addEventListener('click', advance);
+  const r = document.getElementById('restart'); if (r) r.addEventListener('click', restart);
+  const j = document.getElementById('jump'); if (j) j.addEventListener('click', jump);
+  window.scrollTo({top:0});
+}
+function choose(i){
+  const sc = S[state.scene]; const c = sc.choices[i];
+  if (c.set) Object.assign(state, c.set);
+  if (!c.out.length) { state.scene = sc.next; state.chosen = null; render(); return; }
+  state.chosen = i; render();
+}
+function advance(){ state.scene = S[state.scene].next; state.chosen = null; render(); }
+function restart(){ Object.assign(state, { botchling:null, hillock:null, fyke:null, keira:null, scene:'deal', chosen:null }); render(); }
+function jump(){ Object.assign(state, { hillock:null, scene:'hillock', chosen:null }); if (!state.botchling) state.botchling='named'; render(); }
+
+function endHTML(){
+  const f = state.hillock === 'freed', b = state.botchling === 'named';
+  const rows = [
+    ['The orphans', f ? 'Alive, carried out of the bog.' : 'Eaten by the Crones.', !f],
+    ['Downwarren', f ? 'Massacred by the freed spirit.' : 'Safe.', f],
+    ['Anna', f ? 'Cursed into a water hag. Died when you lifted it.' : 'Alive, mind gone. Taken east for a cure.', f],
+    ['The Baron', f ? 'Hanged himself.' : 'Alive. Gave up the keep, rode east with her.', f],
+    ['Tamara', 'Leaves with the witch hunters. Never forgives him. Same either way.', false],
+    ['The dead child', b ? 'Named Dea, buried under the doorstep, a lubberkin now.' : 'Killed under the walls, never named.', !b],
+    ['Graham and Oreton', state.fyke === 'bones' ? 'Graham dead. Plague loose in Oreton.' : 'Graham alive. No plague.', state.fyke === 'bones'],
+    ['Keira Metz', state.keira === 'radovid' ? 'Burned at the stake in Novigrad.' : state.keira === 'dead' ? 'Killed by you in Velen.' : 'Alive. Saves Lambert at Kaer Morhen, leaves with him.', state.keira !== 'kaer'],
+    ['Lambert', state.keira === 'kaer' ? 'Lives, and gets Keira.' : 'Lives, barely. Keira was not there to pull him out.', false]
+  ];
+  let h = `<p>You <b>${b ? 'let him name the botchling' : 'killed the botchling'}</b>, <b>${f ? 'freed the spirit' : 'burned the heart'}</b>, <b>${state.fyke === 'bones' ? 'carried the bones' : 'fought the pesta'}</b>, and <b>${state.keira === 'radovid' ? 'let Keira go' : state.keira === 'dead' ? 'killed Keira' : 'sent Keira to Kaer Morhen'}</b>.</p>
+  <div class="tablewrap"><table><thead><tr><th>Who</th><th>Where they end up</th></tr></thead><tbody>`;
+  rows.forEach(r => h += `<tr><td>${esc(r[0])}</td><td class="${r[2]?'dead':''}">${esc(r[1])}</td></tr>`);
+  h += `</tbody></table></div>
+  <div class="result"><h3>The argument</h3>
+  <p>The small choices (the deal, the thugs, the confession, Tamara) change nothing in that table. The game puts them there so you have to say what you think of the Baron out loud. The botchling only changes the last Baron row, and how you feel about him when the rest lands.</p>
+  <p>The Hillock choice is the whole game: a dozen children or a village, and whether Anna dies in his arms or lives without her mind. The spirit told the truth about the Crones and lied about itself. The Crones kept every bargain and ate the children anyway.</p>
+  <p>Keira is the opposite shape. A throwaway choice in a hut in Velen decides whether a sorceress burns, and whether a witcher you have known your whole life gets pulled out of a fight forty hours later.</p>
+  <p>So: which forks, and for whom?</p></div>
+  <div class="next"><button class="btn" id="restart">Start over</button><button class="btn ghost" id="jump">Redo the Hillock</button></div>
+  <p class="endnote">From The Witcher 3: Wild Hunt (CD Projekt Red): Family Matters, Ladies of the Wood, The Whispering Hillock, Return to Crookback Bog.</p>`;
+  return h;
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === '1' || e.key === '2' || e.key === '3') { const b = document.querySelector(`button[data-i="${+e.key-1}"]`); if (b) b.click(); }
+  if (e.key === 'Enter') { const g = document.getElementById('go'); if (g) g.click(); }
+});
+function start(saved){ if (saved && saved.scene && S[saved.scene]) Object.assign(state, saved); render(); }
+window.claude?.hot?.snapshot?.(() => ({...state}));
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+</script>
+
+</body>
+</html>
